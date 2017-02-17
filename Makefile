@@ -63,7 +63,7 @@ create:
         --capabilities CAPABILITY_IAM \
         --template-body file://template.json \
         --parameters file://parameters/parameters.json
-		aws --region $(AWS_REGION) cloudformation stack-create-complete --stack-name $(TARGET_ENV)-app-$(SERVICE_NAME)
+		aws --region $(AWS_REGION) cloudformation wait stack-create-complete --stack-name $(TARGET_ENV)-app-$(SERVICE_NAME)
 
 .PHONY: docker-build
 docker-build:

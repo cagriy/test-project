@@ -53,10 +53,10 @@ create:
 		cp parameters/generic.json parameters/parameters.json
 		echo $(CNAME)
 		sed -i1 "s/<LoadBalancerCNAME>/qa-$(SERVICE_NAME)/g" parameters/parameters.json
-		sed -i1 "s/<ClusterStackName>/$(TARGET_ENV)-ecs/g" parameters/parameters.json
+		sed -i1 "s/<ClusterStackName>/$(TARGET_ENV)/g" parameters/parameters.json
 		sed -i1 "s/<ServiceName>/$(SERVICE_NAME)/g" parameters/parameters.json
-		sed -i1 "s/<CPU>/100/g" parameters/parameters.json
-		sed -i1 "s/<MemoryReservation>/256/g" parameters/parameters.json
+		sed -i1 "s/<CPU>/$(CPU)/g" parameters/parameters.json
+		sed -i1 "s/<MemoryReservation>/$(MEMORY)/g" parameters/parameters.json
 		sed -i1 "s/<TargetEnvironment>/$(TARGET_ENV)/g" parameters/parameters.json
 		sed -i1 "s/<DockerImage>/$(DOCKER_IMAGE)/g" parameters/parameters.json
 		aws --region $(AWS_REGION) cloudformation create-stack --stack-name $(TARGET_ENV)-app-$(SERVICE_NAME) \

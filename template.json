@@ -261,16 +261,6 @@
         "UnhealthyThresholdCount"     : 2,
         "VpcId"                       : { "Fn::ImportValue" : { "Fn::Sub" : "${ClusterStackName}-VpcId" } }
       }
-    },
-    "ECSSecurityGroupRule" : {
-      "Type" : "AWS::EC2::SecurityGroupIngress",
-      "Properties" : {
-        "FromPort" : 0,
-        "GroupId" : { "Fn::ImportValue" : { "Fn::Sub" : "${ClusterStackName}-EcsSecurityGroup" } },
-        "IpProtocol" : "tcp",
-        "SourceSecurityGroupId" : { "Ref" : "ElbSecurityGroup" },
-        "ToPort" : 65535
-      }
     }
   },
 

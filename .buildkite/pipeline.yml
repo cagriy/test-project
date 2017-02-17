@@ -17,16 +17,7 @@ steps:
 
     - wait
 
-    - label: ':package:'
-      command: |
-          DOCKER_IMAGE=$(make ecr-uri):${BUILDKITE_BUILD_NUMBER} \
-          make ecs-createtask
-          make ecs-getrevision | buildkite-agent meta-data set "ecstaskrev"
-          make ecs-getcount | buildkite-agent meta-data set "ecsservicecount"
-      agents:
-          queue: default
 
-    - wait
 
     - label: ':ecs: QA :rocket:'
       command: |

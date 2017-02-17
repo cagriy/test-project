@@ -1,7 +1,6 @@
 steps:
 
 
-
     - label: ':ecs: QA :rocket:'
       command: |
           CLUSTER_STACK_NAME=qa-ecs \

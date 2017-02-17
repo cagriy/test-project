@@ -53,7 +53,7 @@ create:
 		cp parameters/generic.json parameters/parameters.json
 		echo $(CNAME)
 		sed -i1 "s/<LoadBalancerCNAME>/qa-$(SERVICE_NAME)/g" parameters/parameters.json
-		sed -i1 "s/<ClusterStackName>/$(TARGET_ENV)/g" parameters/parameters.json
+		sed -i1 "s/<ClusterStackName>/$(TARGET_ENV)-ecs/g" parameters/parameters.json
 		sed -i1 "s/<ServiceName>/$(SERVICE_NAME)/g" parameters/parameters.json
 		sed -i1 "s/<CPU>/$(CPU)/g" parameters/parameters.json
 		sed -i1 "s/<MemoryReservation>/$(MEMORY)/g" parameters/parameters.json

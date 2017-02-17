@@ -1,0 +1,42 @@
+[
+  {
+    "ParameterKey": "ClusterStackName",
+    "ParameterValue": "<ClusterStackName>"
+  },
+  {
+    "ParameterKey": "HostedZone",
+    "ParameterValue": "Z2A35T9P7AL1FK"
+  },
+  {
+    "ParameterKey": "LoadBalancerCNAME",
+    "ParameterValue": "<LoadBalancerCNAME>"
+  },
+  {
+    "ParameterKey": "ServiceName",
+    "ParameterValue": "<ServiceName>"
+  },
+  {
+    "ParameterKey": "CPU",
+    "ParameterValue": "<CPU>"
+  },
+  {
+    "ParameterKey": "MemoryReservation",
+    "ParameterValue": "<MemoryReservation>"
+  },
+  {
+    "ParameterKey": "TargetEnvironment",
+    "ParameterValue": "<TargetEnvironment>"
+  },
+  {
+    "ParameterKey": "DockerImage",
+    "ParameterValue": "<DockerImage>"
+  },
+  {
+    "ParameterKey": "ECRRepo",
+    "ParameterValue": "209096657813.dkr.ecr.eu-west-2.amazonaws.com"
+  },
+  {
+    "ParameterKey": "ContainerPort",
+    "ParameterValue": "9000"
+  }
+]

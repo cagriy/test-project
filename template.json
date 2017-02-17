@@ -1,0 +1,308 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Creates ECS services and ALBs for GAP",
+
+  "Parameters" : {
+
+    "ClusterStackName" : {
+      "Type" : "String",
+      "Description" : "Name of the CF stack running the ECS cluster",
+    },
+
+    "HostedZone" : {
+      "Type" : "AWS::Route53::HostedZone::Id",
+      "Description" : "Zone ID in Route53 (Z2A35T9P7AL1FK) - Optional",
+      "Default" : "Z2A35T9P7AL1FK"
+    },
+
+    "LoadBalancerCNAME" : {
+      "Type" : "String",
+      "Description" : "Hostname for the ALB created for the ECS cluster (test.gapgov.uk)"
+    },
+
+    "ServiceName" : {
+      "Type" : "String",
+      "Description" : "Name of the service (token, gg-proxy)"
+    },
+
+    "CPU" : {
+      "Type" : "String",
+      "Description" : "CPU allocation for the service"
+    },
+
+    "MemoryReservation" : {
+      "Type" : "String",
+      "Description" : "Soft limit for memory reservation"
+    },
+
+    "TargetEnvironment" : {
+      "Type" : "String",
+      "Description" : "Environment variable TARGET_ENV (QAM, QAA, PERF, ETE)"
+    },
+
+    "DockerImage" : {
+      "Type" : "String",
+      "Description" : "Docker Image for this service (token:latest)"
+    },
+
+    "ECRRepo" : {
+      "Type" : "String",
+      "Description" : "URL for the ECR repo (209096657813.dkr.ecr.eu-west-2.amazonaws.com/gap)",
+      "Default" : "209096657813.dkr.ecr.eu-west-2.amazonaws.com/gap"
+    },
+
+    "ContainerPort" : {
+      "Type" : "Number",
+      "Description" : "Container port number (9000)",
+      "Default" : 9000
+    },
+
+  },
+
+  "Conditions" : {
+
+    "CreateELBCname" : {
+      "Fn::Not" : [ { "Fn::Equals" : [ "", { "Ref" : "HostedZone" } ] } ]
+    }
+
+  },
+
+  "Resources" : {
+
+    "Task" : {
+      "Type" : "AWS::ECS::TaskDefinition",
+      "Properties" : {
+        "ContainerDefinitions" : [ {
+          "Cpu" : { "Ref": "CPU" },
+          "Environment": [
+            { "Name": "TARGET_ENV", "Value": { "Ref": "TargetEnvironment" }},
+          ],
+          "Essential" : true,
+          "Image" : { "Fn::Sub": "${ECRRepo}/${DockerImage}" },
+          "LogConfiguration" : {
+            "LogDriver" : "awslogs",
+            "Options" : {
+              "awslogs-group": { "Fn::Sub" : "docker-logs" },
+              "awslogs-region": "eu-west-2",
+              "awslogs-stream-prefix": { "Ref": "ServiceName" }
+            }
+          },
+          "MemoryReservation" : { "Ref" : "MemoryReservation" },
+          "Name" : { "Ref": "ServiceName" },
+          "PortMappings" : [{
+            "ContainerPort" : { "Ref" : "ContainerPort" }
+          }]
+        } ],
+        "Family" : { "Ref": "ServiceName" },
+        "NetworkMode" : "bridge"
+      }
+    },
+
+    "ElbSecurityGroup" : {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ELB Allowed Ports",
+        "VpcId": { "Fn::ImportValue" : { "Fn::Sub" : "${ClusterStackName}-VpcId" } },
+        "SecurityGroupIngress" : [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 1,
+            "ToPort": 65535,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+
+    "ECSALB" : {
+      "Type" : "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties" : {
+        "Scheme" : "internal",
+        "LoadBalancerAttributes" : [
+          {
+            "Key" : "idle_timeout.timeout_seconds",
+            "Value" : "30"
+          }
+        ],
+        "Subnets" : [
+          { "Fn::ImportValue" : { "Fn::Sub" : "${ClusterStackName}-PubSubnetA" } },
+          { "Fn::ImportValue" : { "Fn::Sub" : "${ClusterStackName}-PubSubnetB" } }
+        ],
+        "SecurityGroups" : [ { "Ref" : "ElbSecurityGroup" } ]
+      }
+    },
+
+    "ALBCname" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Condition" : "CreateELBCname",
+      "Properties" : {
+        "HostedZoneId" : { "Ref" : "HostedZone" },
+        "Name" : { "Ref" : "LoadBalancerCNAME" },
+        "ResourceRecords" : [ { "Fn::GetAtt" : [ "ECSALB", "DNSName" ] } ],
+        "TTL" : 600,
+        "Type" : "CNAME"
+      }
+    },
+
+    "Service" : {
+      "Type" : "AWS::ECS::Service",
+      "Properties" : {
+        "Cluster" : { "Fn::ImportValue" : { "Fn::Sub" : "${ClusterStackName}-ECSClusterName" } },
+        "DeploymentConfiguration" : {
+          "MaximumPercent" : 200,
+          "MinimumHealthyPercent" : 60
+        },
+        "DesiredCount" : 2,
+        "LoadBalancers" : [ 
+          { 
+            "ContainerName" : { "Ref" : "ServiceName" },
+            "ContainerPort" : { "Ref" : "ContainerPort" },
+            "TargetGroupArn" : { "Ref" : "ECSTargetGroup" }
+          }
+        ],
+        "Role" : { "Ref" : "ECSServiceRole" },
+        "TaskDefinition" : { "Ref" : "Task" }
+      }
+    },
+
+    "ECSServiceRole" : {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+        "AssumeRolePolicyDocument" : {
+          "Statement" : [
+            {
+              "Effect" : "Allow",
+              "Principal" : {
+                "Service" : [
+                  "ecs.amazonaws.com"
+                ]
+              },
+              "Action" : [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path" : "/",
+        "Policies" : [
+          {
+            "PolicyName" : { "Fn::Join" : [ "-", [ "EcsService", { "Ref":"AWS::StackName" } ] ] },
+            "PolicyDocument" : {
+              "Statement" : [
+                {
+                  "Effect" : "Allow",
+                  "Action" : [
+                    "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+                    "elasticloadbalancing:DeregisterTargets",
+                    "elasticloadbalancing:Describe*",
+                    "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+                    "elasticloadbalancing:RegisterTargets",
+                    "ec2:Describe*",
+                    "ec2:AuthorizeSecurityGroupIngress"
+                  ],
+                  "Resource" : "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "ALBListener" : {
+      "Type" : "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties" : {
+        "DefaultActions" : [
+          {
+            "Type" : "forward",
+            "TargetGroupArn" : { "Ref" : "ECSTargetGroup" }
+          }
+        ],
+        "LoadBalancerArn" : { "Ref" : "ECSALB" },
+        "Port" : "80",
+        "Protocol" : "HTTP"
+      }
+    },
+
+    "ECSALBListenerRule" : {
+      "Type" : "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "DependsOn" : "ALBListener",
+      "Properties" : {
+        "Actions" : [
+          {
+            "Type" : "forward",
+            "TargetGroupArn" : { "Ref" : "ECSTargetGroup" }
+          }
+        ],
+        "Conditions" : [
+          {
+            "Field" : "path-pattern",
+            "Values" : [ "/" ]
+          }
+        ],
+        "ListenerArn" : { "Ref" : "ALBListener" },
+        "Priority":1
+      }
+    },
+
+    "ECSTargetGroup":{
+      "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "DependsOn" : "ECSALB",
+      "Properties" : {
+        "HealthCheckIntervalSeconds"  : 10,
+        "HealthCheckPath"             : "/",
+        "HealthCheckProtocol"         : "HTTP",
+        "HealthCheckTimeoutSeconds"   : 5,
+        "HealthyThresholdCount"       : 2,
+        "Name"                        : { "Ref" : "AWS::StackName" },
+        "Port"                        : 80,
+        "Protocol"                    : "HTTP",
+        "UnhealthyThresholdCount"     : 2,
+        "VpcId"                       : { "Fn::ImportValue" : { "Fn::Sub" : "${ClusterStackName}-VpcId" } }
+      }
+    },
+    "ECSSecurityGroupRule" : {
+      "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Properties" : {
+        "FromPort" : 0,
+        "GroupId" : { "Fn::ImportValue" : { "Fn::Sub" : "${ClusterStackName}-EcsSecurityGroup" } },
+        "IpProtocol" : "tcp",
+        "SourceSecurityGroupId" : { "Ref" : "ElbSecurityGroup" },
+        "ToPort" : 65535
+      }
+    }
+  },
+
+  "Outputs" : {
+
+    "ELBAddress" : {
+      "Description": "The CNAME pointing to the application load balancer",
+      "Condition" : "CreateELBCname",
+      "Value" : { "Ref" : "LoadBalancerCNAME" }
+    },
+
+    "ELBName" : {
+      "Description": "The name of the application load balancer",
+      "Value" : { "Fn::GetAtt" : [ "ECSALB", "LoadBalancerName" ] }
+    },
+
+    "ELBDNSName" : {
+      "Description": "The DNS name of the application load balancer",
+      "Value" : { "Fn::GetAtt" : [ "ECSALB", "DNSName" ] }
+    },
+
+    "TargetGroupARN" : {
+      "Description": "TargetGroupARN to be used with ECS services",
+      "Value" : { "Ref" : "ECSTargetGroup" },
+      "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-EcsTargetGroupArn" }}
+    },
+
+    "ListenerArn" : {
+      "Description": "Listener Arn from the ALB",
+      "Value" : { "Ref" : "ALBListener" },
+      "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-AlbListenerArn" }}
+    }
+  }
+
+}

@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-SERVICE_NAME ?= smctest
+SERVICE_NAME ?= smctest2
 AWS_REGION := eu-west-2
 GIT_HASH := $(shell git rev-parse HEAD)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
@@ -40,7 +40,7 @@ ecs-getcount:
 		--query 'services[0].runningCount'
 
 .PHONY: ecs-updateservice
-ecs-updateservice:
+ecs-create-update-service:
 	aws --region $(AWS_REGION) \
 		ecs update-service \
 		--cluster ${TARGET_ENV}-ecs \

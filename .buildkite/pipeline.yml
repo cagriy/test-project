@@ -30,9 +30,15 @@ steps:
 
     - label: ':ecs: QA :rocket:'
       command: |
-          SVCNT=$(buildkite-agent meta-data get "ecsservicecount") \
-          TASKREV=$(buildkite-agent meta-data get "ecstaskrev") \
-          make ecs-updateservice
+          CLUSTER_STACK_NAME=qa-ecs \
+          TARGET_ENV=qa \
+          CNAME=qa-smctest2.gapgov.uk \
+          SERVICE_NAME=smctest2 \
+          CPU=100 \
+          MEMORY=256 \
+          DOCKER_IMAGE=smctest2:latest \
+          AWS_ENV=qa \
+          make create
       env:
           TARGET_ENV: qa
       agents:

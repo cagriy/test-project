@@ -14,20 +14,10 @@ steps:
       env:
           TARGET_ENV: qa
       agents:
-          queue: default
+          queue: qa
 
 
     - wait
-
-    - label: ':ecs: PERF :rocket:'
-      command: |
-          SVCNT=$(buildkite-agent meta-data get "ecsservicecount") \
-          TASKREV=$(buildkite-agent meta-data get "ecstaskrev") \
-          make ecs-updateservice
-      env:
-          TARGET_ENV: perf
-      agents:
-          queue: default
 
     - block: ":rocket: Release!"
 

@@ -16,7 +16,6 @@ steps:
       agents:
           queue: qa
 
-
     - wait
 
     - block: ":rocket: Release!"

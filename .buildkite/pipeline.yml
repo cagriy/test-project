@@ -1,5 +1,22 @@
 steps:
 
+    - label: ':docker: :hammer:'
+      command: |
+          make docker-build
+          make ecr-login
+          DOCKER_TAG=latest \
+          make docker-push
+          # push bk no
+          DOCKER_TAG=${BUILDKITE_BUILD_NUMBER} \
+          make docker-push
+          # push git hash
+          DOCKER_TAG=${BUILDKITE_COMMIT} \
+          make docker-push
+      agents:
+          queue: qa
+
+    - wait
+
     - label: ':ecs: QA :rocket:'
       command: |
           CLUSTER_STACK_NAME=qa-ecs \

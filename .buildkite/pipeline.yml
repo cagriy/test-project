@@ -33,4 +33,4 @@ steps:
 
 
 env:
-    SERVICE_NAME: smctest
+    SERVICE_NAME: smctest2

@@ -5,6 +5,12 @@ GIT_HASH := $(shell git rev-parse HEAD)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 DOCKER_LOGIN ?= $(shell aws --region $(AWS_REGION) ecr get-login)
 
+STACK_EXISTS := $(shell aws cloudformation describe-stacks --stack-name $(TARGET_ENV)-app-$(SERVICE_NAME) >& /dev/null ; echo $$?)
+ifneq ($(STACK_EXISTS),0)
+    STACK_COMMAND="create"
+else
+    STACK_COMMAND="update"
+endif
 
 .PHONY: ecr-uri
 ecr-uri:
@@ -51,6 +57,7 @@ ecs-create-update-service:
 
 .PHONY: create
 create:
+        
 		cp parameters/generic.json parameters/parameters.json
 		echo $(CNAME)
 		sed -i1 "s/<LoadBalancerCNAME>/$(CNAME)/g" parameters/parameters.json
@@ -60,7 +67,24 @@ create:
 		sed -i1 "s/<MemoryReservation>/$(MEMORY)/g" parameters/parameters.json
 		sed -i1 "s/<TargetEnvironment>/$(TARGET_ENV)/g" parameters/parameters.json
 		sed -i1 "s/<DockerImage>/$(DOCKER_IMAGE)/g" parameters/parameters.json
-		aws --region $(AWS_REGION) cloudformation create-stack --stack-name $(TARGET_ENV)-app-$(SERVICE_NAME) \
+		aws --region $(AWS_REGION) cloudformation $(STACK_COMMAND)-stack --stack-name $(TARGET_ENV)-app-$(SERVICE_NAME) \
+        --capabilities CAPABILITY_IAM \
+        --template-body file://template.json \
+        --parameters file://parameters/parameters.json
+		aws --region $(AWS_REGION) cloudformation wait stack-$(STACK_COMMAND)-complete --stack-name $(TARGET_ENV)-app-$(SERVICE_NAME)
+
+.PHONY: update
+update:
+		cp parameters/generic.json parameters/parameters.json
+		echo $(CNAME)
+		sed -i1 "s/<LoadBalancerCNAME>/$(CNAME)/g" parameters/parameters.json
+		sed -i1 "s/<ClusterStackName>/$(TARGET_ENV)-ecs/g" parameters/parameters.json
+		sed -i1 "s/<ServiceName>/$(SERVICE_NAME)/g" parameters/parameters.json
+		sed -i1 "s/<CPU>/$(CPU)/g" parameters/parameters.json
+		sed -i1 "s/<MemoryReservation>/$(MEMORY)/g" parameters/parameters.json
+		sed -i1 "s/<TargetEnvironment>/$(TARGET_ENV)/g" parameters/parameters.json
+		sed -i1 "s/<DockerImage>/$(DOCKER_IMAGE)/g" parameters/parameters.json
+		aws --region $(AWS_REGION) cloudformation update-stack --stack-name $(TARGET_ENV)-app-$(SERVICE_NAME) \
         --capabilities CAPABILITY_IAM \
         --template-body file://template.json \
         --parameters file://parameters/parameters.json

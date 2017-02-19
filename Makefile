@@ -5,6 +5,7 @@ GIT_HASH := $(shell git rev-parse HEAD)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 DOCKER_LOGIN ?= $(shell aws --region $(AWS_REGION) ecr get-login)
 
+
 .PHONY: ecr-uri
 ecr-uri:
 	@aws --region $(AWS_REGION) \

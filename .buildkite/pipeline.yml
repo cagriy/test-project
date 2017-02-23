@@ -15,7 +15,6 @@ steps:
       agents:
           queue: qa
           
-
     - wait
 
     - label: ':ecs: QA :rocket:'

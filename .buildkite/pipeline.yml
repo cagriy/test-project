@@ -13,7 +13,7 @@ steps:
           DOCKER_TAG=${BUILDKITE_COMMIT} \
           make docker-push
       agents:
-          queue: qa
+          queue: gapqa
           
     - wait
 
@@ -31,23 +31,7 @@ steps:
       env:
           TARGET_ENV: qa
       agents:
-          queue: qa
-
-    - wait
-
-    - block: ":rocket: Release!"
-
-    - label: ':ecs: ETE :rocket:'
-      command: |
-          SVCNT=$(buildkite-agent meta-data get "ecsservicecount") \
-          TASKREV=$(buildkite-agent meta-data get "ecstaskrev") \
-          make ecs-updateservice
-      env:
-          TARGET_ENV: ete
-      agents:
-          queue: default
-
-
-
+          queue: gapqa
+ 
 env:
     SERVICE_NAME: smctest2
